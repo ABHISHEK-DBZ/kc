@@ -27,16 +27,7 @@ import {
   INITIAL_ALERTS 
 } from './data/mockData';
 import { computeAnomalies } from './services/analyticsEngine';
-import { 
-  DEFAULT_AGENT_SETTINGS, 
-  runSalesAgent, 
-  runInventoryAgent, 
-  runUdhaarRiskAgent, 
-  runRevenueAnomalyAgent, 
-  runCashRiskAgent, 
-  runShopHealthAgent, 
-  runRetentionAgent 
-} from './services/agentEngine';
+import { DEFAULT_AGENT_SETTINGS } from './services/agentEngine';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { GlobalSearchModal } from './components/GlobalSearchModal';
@@ -53,6 +44,12 @@ import { ReportsView } from './views/ReportsView';
 import { AlertsView } from './views/AlertsView';
 import { SettingsView } from './views/SettingsView';
 import { AIInsightsPanel } from './components/AIInsightsPanel';
+import { CommunityView } from './views/community/CommunityView';
+import { PurchaseOrdersView } from './views/PurchaseOrdersView';
+import { CommunityNotification } from './types/community';
+import { INITIAL_NOTIFICATIONS, INITIAL_COMMUNITY_POSTS } from './data/communitySeedData';
+import { INITIAL_PURCHASE_ORDERS } from './data/purchaseOrdersData';
+import { PurchaseOrder } from './types';
 
 // Dedicated Agent Views
 import { SalesAgentView } from './views/agents/SalesAgentView';
@@ -62,6 +59,10 @@ import { RevenueAnomalyAgentView } from './views/agents/RevenueAnomalyAgentView'
 import { CashRiskAgentView } from './views/agents/CashRiskAgentView';
 import { ShopHealthAgentView } from './views/agents/ShopHealthAgentView';
 import { RetentionAgentView } from './views/agents/RetentionAgentView';
+import { SupportAgentView } from './views/agents/SupportAgentView';
+import { LoginView } from './views/LoginView';
+import { api, AuthUser, getStoredUser, clearStoredAuth } from './services/api';
+import { realtimeClient } from './services/realtime';
 
 import './styles/apple-theme.css';
 
@@ -74,9 +75,11 @@ const pathToTab = (pathname: string): NavigationTab => {
   if (clean === 'sales') return 'sales';
   if (clean === 'udhaar') return 'udhaar';
   if (clean === 'inventory') return 'inventory';
+  if (clean === 'purchase-orders') return 'purchase-orders';
   if (clean === 'staff') return 'staff';
   if (clean === 'reports') return 'reports';
   if (clean === 'ai-insights') return 'ai-insights';
+  if (clean === 'community' || clean.startsWith('community/')) return 'community';
   if (clean === 'agents/sales' || clean === 'agents') return 'agent-sales';
   if (clean === 'agents/inventory') return 'agent-inventory';
   if (clean === 'agents/udhaar-risk') return 'agent-udhaar-risk';
@@ -84,6 +87,7 @@ const pathToTab = (pathname: string): NavigationTab => {
   if (clean === 'agents/cash-risk') return 'agent-cash-risk';
   if (clean === 'agents/shop-health') return 'agent-shop-health';
   if (clean === 'agents/retention') return 'agent-retention';
+  if (clean === 'agents/support') return 'agent-support';
   if (clean === 'alerts') return 'alerts';
   if (clean === 'settings') return 'settings';
   return 'overview';
@@ -97,9 +101,11 @@ const tabToPath = (tab: NavigationTab): string => {
     case 'sales': return '/sales';
     case 'udhaar': return '/udhaar';
     case 'inventory': return '/inventory';
+    case 'purchase-orders': return '/purchase-orders';
     case 'staff': return '/staff';
     case 'reports': return '/reports';
     case 'ai-insights': return '/ai-insights';
+    case 'community': return '/community';
     case 'agent-sales': return '/agents/sales';
     case 'agent-inventory': return '/agents/inventory';
     case 'agent-udhaar-risk': return '/agents/udhaar-risk';
@@ -107,6 +113,7 @@ const tabToPath = (tab: NavigationTab): string => {
     case 'agent-cash-risk': return '/agents/cash-risk';
     case 'agent-shop-health': return '/agents/shop-health';
     case 'agent-retention': return '/agents/retention';
+    case 'agent-support': return '/agents/support';
     case 'alerts': return '/alerts';
     case 'settings': return '/settings';
   }
@@ -114,7 +121,8 @@ const tabToPath = (tab: NavigationTab): string => {
 
 export function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [userRole, setUserRole] = useState<UserRole>('HQ_OWNER');
+  const [authUser, setAuthUser] = useState<AuthUser | null>(() => getStoredUser());
+  const [userRole, setUserRole] = useState<UserRole>(() => getStoredUser()?.role || 'HQ_OWNER');
   const [selectedRegion, setSelectedRegion] = useState<Region>('All');
   const [selectedBranchId, setSelectedBranchId] = useState<string>('all');
   const [dateRange, setDateRange] = useState<DateRange>('30d');
@@ -130,18 +138,128 @@ export function App() {
   const [showAnomalyModal, setShowAnomalyModal] = useState(false);
 
   // Core Data
-  const [shops] = useState<Shop[]>(INITIAL_SHOPS);
+  const [shops, setShops] = useState<Shop[]>(INITIAL_SHOPS);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(INITIAL_PURCHASE_ORDERS);
   const [dailySales] = useState<DailySales[]>(INITIAL_DAILY_SALES);
   const [customers] = useState<Customer[]>(INITIAL_CUSTOMERS);
   const [udhaarRecords] = useState<UdhaarRecord[]>(INITIAL_UDHAAR_RECORDS);
   const [inventoryItems] = useState<InventoryItem[]>(INITIAL_INVENTORY_ITEMS);
   const [staffActivities] = useState<StaffActivity[]>(INITIAL_STAFF_ACTIVITIES);
   const [alerts] = useState<AlertItem[]>(INITIAL_ALERTS);
+  const [communityNotifications, setCommunityNotifications] = useState<CommunityNotification[]>(INITIAL_NOTIFICATIONS);
+
+  const communityUnreadCount = useMemo(() => {
+    return communityNotifications.filter((n) => !n.read).length;
+  }, [communityNotifications]);
 
   // Theme application
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  // Sync userRole when authUser changes
+  useEffect(() => {
+    if (authUser) {
+      setUserRole(authUser.role);
+    }
+  }, [authUser]);
+
+  // Realtime SSE Listener and live backend data synchronization
+  useEffect(() => {
+    if (!authUser) return;
+
+    // Connect SSE client
+    realtimeClient.connect();
+
+    const unsubscribe = realtimeClient.subscribe('*', (event) => {
+      console.log('[App Realtime Event Received]', event);
+
+      if (event.type === 'AGENT_STARTED') {
+        const { agentId } = event.payload || {};
+        if (agentId) {
+          setRunningAgentId(agentId as AgentId);
+          setAgentProgress(`Autonomous agent '${agentId}' execution in progress...`);
+        }
+      } else if (event.type === 'AGENT_COMPLETED') {
+        const runRecord = event.payload;
+        const aId = runRecord?.agent_id as AgentId;
+        if (aId) {
+          setAgentRuns((prev) => ({
+            ...prev,
+            [aId]: [runRecord, ...(prev[aId] || []).filter((r) => r.id !== runRecord.id)]
+          }));
+          api.getAgentFindings(aId).then((findings) => {
+            if (findings) setAgentFindings((prev) => ({ ...prev, [aId]: findings }));
+          }).catch(() => {});
+          api.getAgentTasks(aId).then((tasks) => {
+            if (tasks) setAgentTasks((prev) => ({ ...prev, [aId]: tasks }));
+          }).catch(() => {});
+        }
+        setRunningAgentId(null);
+        setAgentProgress('');
+      } else if (event.type === 'AGENT_FAILED') {
+        setRunningAgentId(null);
+        setAgentProgress('');
+      } else if (event.type === 'TASK_CREATED') {
+        const task = event.payload;
+        const aId = task?.agent_id as AgentId;
+        if (aId) {
+          api.getAgentTasks(aId).then((tasks) => {
+            if (tasks) setAgentTasks((prev) => ({ ...prev, [aId]: tasks }));
+          }).catch(() => {});
+        }
+      } else if (event.type === 'PURCHASE_ORDER_CREATED') {
+        api.getPurchaseOrders().then((freshPOs) => {
+          if (freshPOs && freshPOs.length) setPurchaseOrders(freshPOs);
+        }).catch(console.error);
+      } else if (event.type === 'SHOP_HEALTH_UPDATED') {
+        api.getShops().then((freshShops) => {
+          if (freshShops && freshShops.length) setShops(freshShops);
+        }).catch(console.error);
+      }
+    });
+
+    // Fetch initial fresh data from backend SQLite DB
+    api.getShops().then((freshShops) => {
+      if (freshShops && freshShops.length) setShops(freshShops);
+    }).catch(console.error);
+
+    api.getPurchaseOrders().then((freshPOs) => {
+      if (freshPOs && freshPOs.length) setPurchaseOrders(freshPOs);
+    }).catch(console.error);
+
+    // Fetch initial persistent agent runs, findings, and tasks for all 8 agents
+    const allAgentIds: AgentId[] = ['sales', 'inventory', 'udhaar-risk', 'revenue-anomaly', 'cash-risk', 'shop-health', 'retention', 'support'];
+    allAgentIds.forEach((aId) => {
+      api.getAgentRuns(aId).then((runs) => {
+        if (runs && runs.length) setAgentRuns((prev) => ({ ...prev, [aId]: runs }));
+      }).catch(() => {});
+      api.getAgentFindings(aId).then((findings) => {
+        if (findings && findings.length) setAgentFindings((prev) => ({ ...prev, [aId]: findings }));
+      }).catch(() => {});
+      api.getAgentTasks(aId).then((tasks) => {
+        if (tasks && tasks.length) setAgentTasks((prev) => ({ ...prev, [aId]: tasks }));
+      }).catch(() => {});
+    });
+
+    const handleExpired = () => {
+      setAuthUser(null);
+    };
+    window.addEventListener('auth:expired', handleExpired);
+
+    return () => {
+      unsubscribe();
+      realtimeClient.disconnect();
+      window.removeEventListener('auth:expired', handleExpired);
+    };
+  }, [authUser]);
+
+  const handleLogout = async () => {
+    await api.logout();
+    clearStoredAuth();
+    realtimeClient.disconnect();
+    setAuthUser(null);
+  };
 
   // Browser History & Popstate Sync for URL Routing
   useEffect(() => {
@@ -235,108 +353,86 @@ export function App() {
   const [runningAgentId, setRunningAgentId] = useState<AgentId | null>(null);
   const [agentProgress, setAgentProgress] = useState<string>('');
 
-  // Initial runs and findings
-  const initialSales = useMemo(() => runSalesAgent(visibleShops, visibleDailySales, agentSettings.sales), []);
-  const initialInv = useMemo(() => runInventoryAgent(visibleShops, visibleInventory, agentSettings.inventory), []);
-  const initialUdh = useMemo(() => runUdhaarRiskAgent(visibleShops, visibleUdhaar, visibleCustomers, agentSettings['udhaar-risk']), []);
-  const initialAnm = useMemo(() => runRevenueAnomalyAgent(visibleShops, visibleDailySales, agentSettings['revenue-anomaly']), []);
-  const initialCsh = useMemo(() => runCashRiskAgent(visibleShops, visibleDailySales, visibleStaff, agentSettings['cash-risk']), []);
-  const initialHlt = useMemo(() => runShopHealthAgent(visibleShops, visibleDailySales, visibleUdhaar, visibleInventory, agentSettings['shop-health']), []);
-  const initialRet = useMemo(() => runRetentionAgent(
-    visibleShops,
-    initialSales.findings,
-    initialInv.findings,
-    initialUdh.findings,
-    initialCsh.findings,
-    initialHlt.findings,
-    agentSettings.retention
-  ), []);
-
   const [agentFindings, setAgentFindings] = useState<Record<AgentId, AgentFinding[]>>({
-    sales: initialSales.findings,
-    inventory: initialInv.findings,
-    'udhaar-risk': initialUdh.findings,
-    'revenue-anomaly': initialAnm.findings,
-    'cash-risk': initialCsh.findings,
-    'shop-health': initialHlt.findings,
-    retention: initialRet.findings
+    sales: [],
+    inventory: [],
+    'udhaar-risk': [],
+    'revenue-anomaly': [],
+    'cash-risk': [],
+    'shop-health': [],
+    retention: [],
+    support: []
   });
 
   const [agentTasks, setAgentTasks] = useState<Record<AgentId, AgentTask[]>>({
-    sales: initialSales.tasks,
-    inventory: initialInv.tasks,
-    'udhaar-risk': initialUdh.tasks,
-    'revenue-anomaly': initialAnm.tasks,
-    'cash-risk': initialCsh.tasks,
-    'shop-health': initialHlt.tasks,
-    retention: initialRet.tasks
+    sales: [],
+    inventory: [],
+    'udhaar-risk': [],
+    'revenue-anomaly': [],
+    'cash-risk': [],
+    'shop-health': [],
+    retention: [],
+    support: []
   });
 
   const [agentRuns, setAgentRuns] = useState<Record<AgentId, AgentRun[]>>({
-    sales: [initialSales.run],
-    inventory: [initialInv.run],
-    'udhaar-risk': [initialUdh.run],
-    'revenue-anomaly': [initialAnm.run],
-    'cash-risk': [initialCsh.run],
-    'shop-health': [initialHlt.run],
-    retention: [initialRet.run]
+    sales: [],
+    inventory: [],
+    'udhaar-risk': [],
+    'revenue-anomaly': [],
+    'cash-risk': [],
+    'shop-health': [],
+    retention: [],
+    support: []
   });
 
-  // Handle "Run Agent Now" Action
-  const handleRunAgent = (agentId: AgentId) => {
+  // Handle "Run Agent Now" Action - Authenticated Backend Execution
+  const handleRunAgent = async (agentId: AgentId) => {
     setRunningAgentId(agentId);
-    setAgentProgress(`Reading live telemetry from ${visibleShops.length} branches...`);
+    setAgentProgress(`Executing autonomous ${agentId} agent on backend server...`);
 
-    setTimeout(() => {
-      setAgentProgress(`Scanning records across branches... Evaluating mathematical threshold formulas...`);
-    }, 400);
+    try {
+      const runResult = await api.runAgent(agentId);
+      setAgentProgress(`Completed: ${runResult.critical_findings || 0} critical findings, ${runResult.tasks_generated || 0} tasks created.`);
 
-    setTimeout(() => {
-      let result: { findings: AgentFinding[]; tasks: AgentTask[]; run: AgentRun };
-      if (agentId === 'sales') {
-        result = runSalesAgent(visibleShops, visibleDailySales, agentSettings.sales);
-      } else if (agentId === 'inventory') {
-        result = runInventoryAgent(visibleShops, visibleInventory, agentSettings.inventory);
-      } else if (agentId === 'udhaar-risk') {
-        result = runUdhaarRiskAgent(visibleShops, visibleUdhaar, visibleCustomers, agentSettings['udhaar-risk']);
-      } else if (agentId === 'revenue-anomaly') {
-        result = runRevenueAnomalyAgent(visibleShops, visibleDailySales, agentSettings['revenue-anomaly']);
-      } else if (agentId === 'cash-risk') {
-        result = runCashRiskAgent(visibleShops, visibleDailySales, visibleStaff, agentSettings['cash-risk']);
-      } else if (agentId === 'shop-health') {
-        result = runShopHealthAgent(visibleShops, visibleDailySales, visibleUdhaar, visibleInventory, agentSettings['shop-health']);
-      } else {
-        result = runRetentionAgent(
-          visibleShops,
-          agentFindings.sales,
-          agentFindings.inventory,
-          agentFindings['udhaar-risk'],
-          agentFindings['cash-risk'],
-          agentFindings['shop-health'],
-          agentSettings.retention
-        );
+      // Refresh runs, findings, and tasks directly from SQLite DB
+      const [runs, findings, tasks] = await Promise.all([
+        api.getAgentRuns(agentId).catch(() => []),
+        api.getAgentFindings(agentId).catch(() => []),
+        api.getAgentTasks(agentId).catch(() => [])
+      ]);
+
+      if (runs && runs.length) setAgentRuns((prev) => ({ ...prev, [agentId]: runs }));
+      if (findings && findings.length) setAgentFindings((prev) => ({ ...prev, [agentId]: findings }));
+      if (tasks && tasks.length) setAgentTasks((prev) => ({ ...prev, [agentId]: tasks }));
+
+      // If inventory agent was run, also refresh purchase orders
+      if (agentId === 'inventory') {
+        const freshPOs = await api.getPurchaseOrders().catch(() => []);
+        if (freshPOs && freshPOs.length) setPurchaseOrders(freshPOs);
       }
-
-      setAgentProgress(`Complete. Detected ${result.findings.length} findings & generated ${result.tasks.length} tasks.`);
-      
+    } catch (err: any) {
+      console.error('[Run Agent Error]', err);
+      setAgentProgress(`Agent execution error: ${err.message || 'Execution failed'}`);
+    } finally {
       setTimeout(() => {
-        setAgentFindings((prev) => ({ ...prev, [agentId]: result.findings }));
-        setAgentTasks((prev) => ({ 
-          ...prev, 
-          [agentId]: [...result.tasks, ...prev[agentId].filter(t => !result.tasks.some(rt => rt.id === t.id))] 
-        }));
-        setAgentRuns((prev) => ({ ...prev, [agentId]: [result.run, ...prev[agentId]] }));
         setRunningAgentId(null);
         setAgentProgress('');
-      }, 350);
-    }, 850);
+      }, 900);
+    }
   };
 
-  const handleUpdateTaskStatus = (agentId: AgentId, taskId: string, newStatus: 'Awaiting Approval' | 'In Progress' | 'Completed') => {
-    setAgentTasks((prev) => ({
-      ...prev,
-      [agentId]: prev[agentId].map((t) => t.id === taskId ? { ...t, status: newStatus } : t)
-    }));
+  const handleUpdateTaskStatus = async (agentId: AgentId, taskId: string, newStatus: 'Awaiting Approval' | 'In Progress' | 'Completed') => {
+    if (newStatus === 'Completed') {
+      try {
+        await api.approveTask(taskId);
+      } catch (e) {
+        console.error('[Task Approve Error]', e);
+      }
+    }
+    api.getAgentTasks(agentId).then((tasks) => {
+      if (tasks) setAgentTasks((prev) => ({ ...prev, [agentId]: tasks }));
+    }).catch(() => {});
   };
 
   const handleCreateTask = (agentId: AgentId, task: AgentTask) => {
@@ -353,11 +449,54 @@ export function App() {
     }));
   };
 
+  const handleAddShop = (newShop: Shop) => {
+    setShops((prev) => [newShop, ...prev]);
+  };
+
+  const handleApprovePO = async (poId: string) => {
+    try {
+      await api.approvePO(poId);
+      const freshPOs = await api.getPurchaseOrders();
+      if (freshPOs) setPurchaseOrders(freshPOs);
+      api.getAgentTasks('inventory').then((tasks) => {
+        if (tasks) setAgentTasks((prev) => ({ ...prev, inventory: tasks }));
+      }).catch(() => {});
+    } catch (err) {
+      console.error('[Approve PO Error]', err);
+    }
+  };
+
+  const handleRejectPO = async (poId: string, reason?: string) => {
+    try {
+      await api.rejectPO(poId, reason);
+      const freshPOs = await api.getPurchaseOrders();
+      if (freshPOs) setPurchaseOrders(freshPOs);
+    } catch (err) {
+      console.error('[Reject PO Error]', err);
+    }
+  };
+
   // Handle Demo "3 At-Risk Shops" click
   const handleFilterAtRisk = () => {
     setHealthFilterPreset('At-Risk');
-    navigateToTab('shops');
+    setActiveTab('shops');
+    setSelectedShop(null);
+    if (window.location.pathname !== '/shops' || !window.location.search.includes('health=at-risk')) {
+      window.history.pushState({ tab: 'shops' }, '', '/shops?health=at-risk');
+    }
   };
+
+  // If unauthenticated, render Apple HIG Login Page
+  if (!authUser) {
+    return (
+      <LoginView
+        onLoginSuccess={(user) => {
+          setAuthUser(user);
+          setUserRole(user.role);
+        }}
+      />
+    );
+  }
 
   return (
     <div style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }}>
@@ -369,10 +508,13 @@ export function App() {
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         currentRole={userRole}
+        authUser={authUser}
         shopCount={visibleShops.length}
         customerCount={visibleCustomers.length}
         stockAlertCount={visibleInventory.filter((i) => i.current_stock <= i.reorder_threshold).length}
         alertCount={visibleAlerts.filter((a) => a.status === 'active').length}
+        communityUnreadCount={communityUnreadCount}
+        pendingPOCount={purchaseOrders.filter((p) => p.status === 'Awaiting Approval').length}
       />
 
       {/* 2. Main Application Body */}
@@ -396,10 +538,14 @@ export function App() {
           onDateRangeChange={(dr: DateRange) => setDateRange(dr)}
           shops={shops}
           alerts={alerts}
+          communityNotifications={communityNotifications}
+          onNavigateToCommunity={() => navigateToTab('community')}
           onOpenSearch={() => setShowSearchModal(true)}
           onOpenAnomalies={() => setShowAnomalyModal(true)}
           theme={theme}
           onToggleTheme={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+          authUser={authUser}
+          onLogout={handleLogout}
         />
 
         {/* Dynamic Route Content */}
@@ -427,10 +573,30 @@ export function App() {
                 {activeTab === 'overview' && (
                   <OverviewView
                     shops={visibleShops}
+                    allShops={shops}
                     dailySales={visibleDailySales}
                     udhaarRecords={visibleUdhaar}
                     inventoryItems={visibleInventory}
+                    customers={visibleCustomers}
+                    staffActivities={visibleStaff}
+                    alerts={visibleAlerts}
                     anomalies={anomalies}
+                    agentFindings={agentFindings}
+                    agentTasks={agentTasks}
+                    agentRuns={agentRuns}
+                    onRunAgent={handleRunAgent}
+                    runningAgentId={runningAgentId}
+                    currentRole={userRole}
+                    onRoleChange={(r) => setUserRole(r)}
+                    selectedRegion={selectedRegion}
+                    onRegionChange={(reg) => setSelectedRegion(reg)}
+                    dateRange={dateRange}
+                    onDateRangeChange={(dr) => setDateRange(dr)}
+                    communityPosts={INITIAL_COMMUNITY_POSTS}
+                    purchaseOrders={purchaseOrders}
+                    onApprovePO={handleApprovePO}
+                    onRejectPO={handleRejectPO}
+                    onAddShop={handleAddShop}
                     onSelectShop={(s) => setSelectedShop(s)}
                     onNavigateToTab={navigateToTab}
                     onFilterAtRisk={handleFilterAtRisk}
@@ -506,6 +672,27 @@ export function App() {
                     udhaarRecords={visibleUdhaar}
                     inventoryItems={visibleInventory}
                     onSelectShop={(s) => setSelectedShop(s)}
+                    onNavigateToAgent={navigateToTab}
+                  />
+                )}
+
+                {/* TAB 9.5: FRANCHISE COMMUNITY */}
+                {activeTab === 'community' && (
+                  <CommunityView
+                    currentRole={userRole}
+                    currentShopId={selectedBranchId !== 'all' ? selectedBranchId : 'shop-01'}
+                    allShops={shops}
+                    onUpdateNotifications={(notifs) => setCommunityNotifications(notifs)}
+                  />
+                )}
+
+                {/* TAB 9.6: PURCHASE ORDERS APPROVAL QUEUE */}
+                {activeTab === 'purchase-orders' && (
+                  <PurchaseOrdersView
+                    purchaseOrders={purchaseOrders}
+                    onApprovePO={handleApprovePO}
+                    onRejectPO={handleRejectPO}
+                    currentRole={userRole}
                     onNavigateToAgent={navigateToTab}
                   />
                 )}
@@ -643,6 +830,23 @@ export function App() {
                     onSaveSettings={(st) => handleSaveSettings('retention', st)}
                     onSelectShop={(s) => setSelectedShop(s)}
                     onCreateTask={(t) => handleCreateTask('retention', t)}
+                  />
+                )}
+
+                {/* AGENT 8: SUPPORT & COMMUNITY AGENT (/agents/support) */}
+                {activeTab === 'agent-support' && (
+                  <SupportAgentView
+                    shops={visibleShops}
+                    findings={agentFindings.support}
+                    tasks={agentTasks.support}
+                    runs={agentRuns.support}
+                    settings={agentSettings.support}
+                    onRunAgent={() => handleRunAgent('support')}
+                    isRunning={runningAgentId === 'support'}
+                    runningProgress={agentProgress}
+                    onUpdateTaskStatus={(id, st) => handleUpdateTaskStatus('support', id, st)}
+                    onSaveSettings={(st) => handleSaveSettings('support', st)}
+                    onNavigateToCommunity={() => navigateToTab('community')}
                   />
                 )}
 

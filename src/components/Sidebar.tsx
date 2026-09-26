@@ -1,7 +1,6 @@
 import React from 'react';
 import { NavigationTab, UserRole } from '../types';
 import { 
-  Building2, 
   LayoutDashboard, 
   Store, 
   Users, 
@@ -20,7 +19,9 @@ import {
   MapPin,
   Cpu,
   TrendingUp,
-  BarChart3
+  BarChart3,
+  MessagesSquare,
+  PackageCheck
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -33,6 +34,9 @@ interface SidebarProps {
   customerCount: number;
   stockAlertCount: number;
   alertCount: number;
+  communityUnreadCount?: number;
+  pendingPOCount?: number;
+  authUser?: any;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -44,7 +48,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   shopCount,
   customerCount,
   stockAlertCount,
-  alertCount
+  alertCount,
+  communityUnreadCount = 4,
+  pendingPOCount = 3,
+  authUser
 }) => {
   const [agentsExpanded, setAgentsExpanded] = React.useState(true);
 
@@ -63,9 +70,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'sales' as NavigationTab, label: 'Sales', icon: IndianRupee },
     { id: 'udhaar' as NavigationTab, label: 'Udhaar', icon: CreditCard },
     { id: 'inventory' as NavigationTab, label: 'Inventory', icon: Package, badge: stockAlertCount, badgeColor: 'var(--apple-orange)' },
+    { id: 'purchase-orders' as NavigationTab, label: 'Purchase Orders', icon: PackageCheck, badge: pendingPOCount, badgeColor: 'var(--apple-orange)' },
     { id: 'staff' as NavigationTab, label: 'Staff', icon: UserCheck },
     { id: 'reports' as NavigationTab, label: 'Reports', icon: FileSpreadsheet },
-    { id: 'ai-insights' as NavigationTab, label: 'AI Insights', icon: Sparkles, highlight: true }
+    { id: 'ai-insights' as NavigationTab, label: 'AI Insights', icon: Sparkles, highlight: true },
+    { id: 'community' as NavigationTab, label: 'Franchise Community', icon: MessagesSquare, badge: communityUnreadCount, badgeColor: 'var(--apple-blue)', highlight: true }
   ];
 
   const agentItems = [
@@ -75,7 +84,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'agent-revenue-anomaly' as NavigationTab, label: 'Revenue Anomaly Agent', icon: BarChart3 },
     { id: 'agent-cash-risk' as NavigationTab, label: 'Cash Risk Agent', icon: IndianRupee },
     { id: 'agent-shop-health' as NavigationTab, label: 'Shop Health Agent', icon: ShieldCheck },
-    { id: 'agent-retention' as NavigationTab, label: 'Retention Agent', icon: Users }
+    { id: 'agent-retention' as NavigationTab, label: 'Retention Agent', icon: Users },
+    { id: 'agent-support' as NavigationTab, label: 'Support Agent', icon: MessagesSquare }
   ];
 
   const bottomNavItems = [
@@ -170,28 +180,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
           minHeight: '64px'
         }}>
           <div style={{
-            width: '34px',
-            height: '34px',
-            minWidth: '34px',
-            borderRadius: '9px',
-            background: 'linear-gradient(135deg, #0071e3 0%, #5856d6 100%)',
+            width: '36px',
+            height: '36px',
+            minWidth: '36px',
+            borderRadius: '10px',
+            overflow: 'hidden',
+            backgroundColor: '#ffffff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#ffffff',
-            boxShadow: '0 2px 8px rgba(0, 113, 227, 0.3)'
+            boxShadow: '0 2px 8px rgba(0, 113, 227, 0.2)',
+            border: '1px solid rgba(0, 0, 0, 0.08)'
           }}>
-            <Building2 size={19} />
+            <img 
+              src="/logo.png" 
+              alt="KhataCopilot HQ Logo" 
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
           </div>
 
           {!collapsed && (
             <div style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '15px', fontWeight: '700', letterSpacing: '-0.3px', color: 'var(--text-primary)' }}>
+                <span style={{ fontSize: '15px', fontWeight: '800', letterSpacing: '-0.3px', color: 'var(--text-primary)' }}>
                   KhataCopilot <span style={{ color: 'var(--apple-blue)' }}>HQ</span>
                 </span>
               </div>
-              <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+              <p style={{ fontSize: '10.5px', fontWeight: '600', letterSpacing: '0.4px', textTransform: 'uppercase', color: 'var(--text-tertiary)', margin: 0 }}>
                 Retail Chain ERP
               </p>
             </div>
@@ -314,16 +329,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
             fontSize: '11px',
             fontWeight: '700'
           }}>
-            {currentRole === 'HQ_OWNER' ? 'HQ' : (currentRole === 'REGIONAL_MANAGER' ? 'RM' : 'SM')}
+            {authUser?.avatar_initials || (currentRole === 'HQ_OWNER' ? 'HQ' : (currentRole === 'HQ_IT' ? 'IT' : (currentRole === 'STORE_MANAGER' ? 'SM' : 'FO')))}
           </div>
 
           {!collapsed && (
             <div style={{ overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }}>
               <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-primary)' }}>
-                {currentRole === 'HQ_OWNER' ? 'Aditya Singhal' : (currentRole === 'REGIONAL_MANAGER' ? 'Vikram Sawant' : 'Ramesh Sharma')}
+                {authUser?.name || (currentRole === 'HQ_OWNER' ? 'Aditya Singhal' : (currentRole === 'HQ_IT' ? 'Priya Nair' : (currentRole === 'STORE_MANAGER' ? 'Ramesh Sharma' : 'Amit Patel')))}
               </div>
               <div style={{ fontSize: '10.5px', color: 'var(--text-tertiary)' }}>
-                {currentRole === 'HQ_OWNER' ? 'Enterprise Owner' : (currentRole === 'REGIONAL_MANAGER' ? 'Area Mgr (West)' : 'Store Manager')}
+                {currentRole === 'HQ_OWNER' ? 'Enterprise Owner' : (currentRole === 'HQ_IT' ? 'HQ IT Lead' : (currentRole === 'STORE_MANAGER' ? 'Store Manager' : 'Franchise Owner'))}
               </div>
             </div>
           )}

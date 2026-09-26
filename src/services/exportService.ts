@@ -149,7 +149,57 @@ export function exportSalesReport(dailySales: DailySales[], shops: Shop[], forma
   downloadFile(`KhataCopilot_Daily_Sales_${dateStr}.${fileExt}`, content, mimeType);
 }
 
+export function exportProfitReport(shops: Shop[], format: 'csv' | 'excel' = 'csv') {
+  const headers = ['Shop ID', 'Shop Name', 'Region', 'Monthly Revenue (INR)', 'Monthly Profit (INR)', 'Net Margin (%)', 'Daily Avg Revenue (INR)', 'Daily Avg Profit (INR)', 'Health Score', 'Status'];
+
+  const rows = shops.map((s) => [
+    s.id,
+    `"${s.name.replace(/"/g, '""')}"`,
+    s.region,
+    s.monthly_revenue,
+    s.monthly_profit,
+    s.profit_margin_pct,
+    s.daily_revenue,
+    s.daily_profit,
+    s.health_score,
+    s.status
+  ]);
+
+  const delimiter = format === 'excel' ? '\t' : ',';
+  const fileExt = format === 'excel' ? 'xls' : 'csv';
+  const mimeType = format === 'excel' ? 'application/vnd.ms-excel;charset=utf-8;' : 'text/csv;charset=utf-8;';
+
+  const content = [headers.join(delimiter), ...rows.map((r) => r.join(delimiter))].join('\n');
+  const dateStr = new Date().toISOString().split('T')[0];
+  downloadFile(`KhataCopilot_Profit_Analysis_${dateStr}.${fileExt}`, content, mimeType);
+}
+
+export function exportCashAuditReport(shops: Shop[], format: 'csv' | 'excel' = 'csv') {
+  const headers = ['Shop ID', 'Shop Name', 'City', 'Expected Register Cash (INR)', 'Actual Register Cash (INR)', 'Variance Discrepancy (INR)', 'Active Cashiers', 'Status', 'Last Active'];
+
+  const rows = shops.map((s) => [
+    s.id,
+    `"${s.name.replace(/"/g, '""')}"`,
+    s.city,
+    s.cash_expected_today,
+    s.cash_actual_today,
+    s.cash_variance_today,
+    s.active_cashiers_count,
+    s.cash_variance_today === 0 ? 'BALANCED' : (s.cash_variance_today < 0 ? 'SHORTAGE' : 'SURPLUS'),
+    `"${s.last_active}"`
+  ]);
+
+  const delimiter = format === 'excel' ? '\t' : ',';
+  const fileExt = format === 'excel' ? 'xls' : 'csv';
+  const mimeType = format === 'excel' ? 'application/vnd.ms-excel;charset=utf-8;' : 'text/csv;charset=utf-8;';
+
+  const content = [headers.join(delimiter), ...rows.map((r) => r.join(delimiter))].join('\n');
+  const dateStr = new Date().toISOString().split('T')[0];
+  downloadFile(`KhataCopilot_Cash_Audit_${dateStr}.${fileExt}`, content, mimeType);
+}
+
 // Aliases for backwards compatibility
 export const exportShopsSummaryCSV = (shops: Shop[]) => exportShopsSummary(shops, 'csv');
 export const exportUdhaarAgingCSV = (udhaarRecords: UdhaarRecord[], shopName?: string) => exportUdhaarAging(udhaarRecords, shopName, 'csv');
 export const exportGSTReportCSV = (gstItems: GSTReportItem[]) => exportGSTReport(gstItems, 'csv');
+

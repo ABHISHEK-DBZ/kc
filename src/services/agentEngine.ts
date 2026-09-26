@@ -61,6 +61,12 @@ export const DEFAULT_AGENT_SETTINGS: Record<AgentId, Record<string, any>> = {
     highPriorityHealthDrop: 10,
     autoScheduleInterventions: true,
     recheckIntervalDays: 3
+  },
+  support: {
+    autoReply: true,
+    similarityThreshold: 85,
+    aiModel: 'llama-3.1-8b-instant',
+    autoTagCategories: true
   }
 };
 

@@ -1,6 +1,12 @@
 export type HealthStatus = 'Healthy' | 'Watch' | 'At-Risk';
 
-export type UserRole = 'HQ_OWNER' | 'REGIONAL_MANAGER' | 'STORE_MANAGER';
+export type UserRole = 
+  | 'HQ_OWNER' 
+  | 'AREA_MANAGER'
+  | 'REGIONAL_MANAGER' 
+  | 'STORE_MANAGER' 
+  | 'HQ_IT' 
+  | 'FRANCHISE_OWNER';
 
 export type Region = 'All' | 'West' | 'North' | 'South';
 
@@ -13,7 +19,8 @@ export type AgentId =
   | 'revenue-anomaly' 
   | 'cash-risk' 
   | 'shop-health' 
-  | 'retention';
+  | 'retention'
+  | 'support';
 
 export type NavigationTab = 
   | 'overview' 
@@ -22,9 +29,11 @@ export type NavigationTab =
   | 'sales' 
   | 'udhaar' 
   | 'inventory' 
+  | 'purchase-orders'
   | 'staff' 
   | 'reports' 
   | 'ai-insights' 
+  | 'community'
   | 'agent-sales'
   | 'agent-inventory'
   | 'agent-udhaar-risk'
@@ -32,8 +41,35 @@ export type NavigationTab =
   | 'agent-cash-risk'
   | 'agent-shop-health'
   | 'agent-retention'
+  | 'agent-support'
   | 'alerts' 
   | 'settings';
+
+export interface PurchaseOrder {
+  id: string; // e.g. 'PO-2026-081'
+  taskId?: string; // associated AgentTask id
+  shop_id: string;
+  shop_name: string;
+  product_name: string;
+  sku_id: string;
+  quantity: number;
+  unit: string;
+  unit_price: number;
+  total_amount: number;
+  supplier: string;
+  reason: string;
+  current_stock: number;
+  sales_velocity: number;
+  days_remaining: number;
+  created_by: string;
+  status: 'Draft' | 'Awaiting Approval' | 'Approved' | 'Rejected' | 'Completed';
+  created_at: string;
+  approved_by?: string;
+  approved_at?: string;
+  rejection_reason?: string;
+}
+
+export * from './community';
 
 export interface AgentTask {
   id: string;

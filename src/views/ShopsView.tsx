@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Shop, HealthStatus, Region } from '../types';
 import { 
   Search, 
@@ -7,10 +7,10 @@ import {
   ChevronLeft, 
   Download, 
   ShieldAlert, 
-  Filter,
-  Store,
-  MapPin,
-  Clock
+  Filter, 
+  Store, 
+  MapPin, 
+  Clock 
 } from 'lucide-react';
 import { exportShopsSummary } from '../services/exportService';
 
@@ -29,7 +29,20 @@ export const ShopsView: React.FC<ShopsViewProps> = ({
   initialHealthFilter = 'All'
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [healthFilter, setHealthFilter] = useState<'All' | HealthStatus>(initialHealthFilter);
+  const [healthFilter, setHealthFilter] = useState<'All' | HealthStatus>(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const healthParam = urlParams.get('health');
+    if (healthParam === 'at-risk') return 'At-Risk';
+    if (healthParam === 'watch') return 'Watch';
+    if (healthParam === 'healthy') return 'Healthy';
+    return initialHealthFilter;
+  });
+
+  useEffect(() => {
+    if (initialHealthFilter && initialHealthFilter !== 'All') {
+      setHealthFilter(initialHealthFilter);
+    }
+  }, [initialHealthFilter]);
   const [cityFilter, setCityFilter] = useState<string>('All');
   const [sortField, setSortField] = useState<SortField>('monthly_revenue');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');

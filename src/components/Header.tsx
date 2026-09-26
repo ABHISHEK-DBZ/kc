@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserRole, Region, DateRange, Shop, AlertItem } from '../types';
+import { UserRole, Region, DateRange, Shop, AlertItem, CommunityNotification } from '../types';
 import { 
   Building2, 
   MapPin, 
@@ -8,15 +8,22 @@ import {
   Sparkles, 
   Moon, 
   Sun, 
-  Download,
-  ShieldCheck,
-  Search,
-  Calendar,
-  Bell,
-  ChevronDown,
-  Check,
-  Menu
+  Download, 
+  ShieldCheck, 
+  Search, 
+  Calendar, 
+  Bell, 
+  ChevronDown, 
+  Check, 
+  Menu,
+  Wrench,
+  Users,
+  MessagesSquare,
+  CheckCircle2,
+  LogOut,
+  User as UserIcon
 } from 'lucide-react';
+import { AuthUser } from '../services/api';
 
 interface HeaderProps {
   currentRole: UserRole;
@@ -29,11 +36,15 @@ interface HeaderProps {
   onDateRangeChange: (range: DateRange) => void;
   shops: Shop[];
   alerts: AlertItem[];
+  communityNotifications?: CommunityNotification[];
+  onNavigateToCommunity?: () => void;
   onOpenSearch: () => void;
   onOpenAnomalies: () => void;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
   onToggleMobileSidebar?: () => void;
+  authUser?: AuthUser | null;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -47,13 +58,21 @@ export const Header: React.FC<HeaderProps> = ({
   onDateRangeChange,
   shops,
   alerts,
+  communityNotifications = [],
+  onNavigateToCommunity,
   onOpenSearch,
   onOpenAnomalies,
   theme,
   onToggleTheme,
-  onToggleMobileSidebar
+  onToggleMobileSidebar,
+  authUser,
+  onLogout
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [notifTab, setNotifTab] = useState<'community' | 'alerts'>('community');
+
+  const unreadCommunityCount = communityNotifications.filter((n) => !n.read).length;
 
   return (
     <header style={{
@@ -172,30 +191,34 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Center: Role Switcher Segmented Control */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
-        <div className="apple-segmented-control">
-          <button
-            className={`apple-segment-item ${currentRole === 'HQ_OWNER' ? 'active' : ''}`}
-            onClick={() => onRoleChange('HQ_OWNER')}
-          >
-            <ShieldCheck size={14} />
-            <span>HQ Owner</span>
-          </button>
-          <button
-            className={`apple-segment-item ${currentRole === 'REGIONAL_MANAGER' ? 'active' : ''}`}
-            onClick={() => onRoleChange('REGIONAL_MANAGER')}
-          >
-            <MapPin size={14} />
-            <span>Area Manager (West)</span>
-          </button>
-          <button
-            className={`apple-segment-item ${currentRole === 'STORE_MANAGER' ? 'active' : ''}`}
-            onClick={() => onRoleChange('STORE_MANAGER')}
-          >
-            <Store size={14} />
-            <span>Store Manager</span>
-          </button>
+      {/* Center: Realtime Network Operations & Territory Scope Indicator */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '6px 14px',
+          background: 'rgba(118, 118, 128, 0.08)',
+          borderRadius: 'var(--radius-pill)',
+          border: '1px solid var(--border-subtle)',
+          fontSize: '12px',
+          fontWeight: 600,
+          color: 'var(--text-primary)'
+        }}>
+          <span style={{
+            width: '7px',
+            height: '7px',
+            borderRadius: '50%',
+            background: 'var(--apple-green)',
+            boxShadow: '0 0 8px rgba(52, 199, 89, 0.7)'
+          }} />
+          <span>
+            {currentRole === 'HQ_OWNER' && 'Enterprise HQ • All 15 Stores (West, North, South)'}
+            {currentRole === 'HQ_IT' && 'HQ IT Lead • Diagnostics & Agent Monitoring'}
+            {(currentRole === 'AREA_MANAGER' || (currentRole as any) === 'REGIONAL_MANAGER') && 'West Regional Command • 5 Assigned Stores'}
+            {currentRole === 'FRANCHISE_OWNER' && 'Patel Retail Network • Franchise Operations'}
+            {currentRole === 'STORE_MANAGER' && 'Sharma General Store • Counter POS Operations'}
+          </span>
         </div>
       </div>
 
@@ -233,15 +256,17 @@ export const Header: React.FC<HeaderProps> = ({
             title="Notifications"
           >
             <Bell size={16} />
-            <span style={{
-              position: 'absolute',
-              top: '6px',
-              right: '6px',
-              width: '7px',
-              height: '7px',
-              borderRadius: '50%',
-              backgroundColor: 'var(--apple-red)'
-            }}></span>
+            {(unreadCommunityCount > 0 || alerts.length > 0) && (
+              <span style={{
+                position: 'absolute',
+                top: '5px',
+                right: '5px',
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                backgroundColor: 'var(--apple-blue)'
+              }}></span>
+            )}
           </button>
 
           {/* Notifications Flyout */}
@@ -250,28 +275,101 @@ export const Header: React.FC<HeaderProps> = ({
               position: 'absolute',
               right: 0,
               top: '42px',
-              width: '320px',
+              width: '360px',
               background: 'var(--bg-card-solid)',
               border: '1px solid var(--border-card)',
               borderRadius: 'var(--radius-lg)',
               boxShadow: 'var(--shadow-modal)',
-              padding: '14px',
+              padding: '16px',
               zIndex: 100,
               display: 'flex',
               flexDirection: 'column',
-              gap: '10px'
+              gap: '12px'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>
-                <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>Operational Notifications</strong>
+                <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>Notification Center</strong>
                 <span style={{ fontSize: '11px', color: 'var(--apple-blue)', cursor: 'pointer' }} onClick={() => setShowNotifications(false)}>Close</span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '260px', overflowY: 'auto' }}>
-                {alerts.slice(0, 4).map((a) => (
-                  <div key={a.id} style={{ fontSize: '12px', padding: '6px 8px', borderRadius: 'var(--radius-xs)', background: 'rgba(118, 118, 128, 0.05)' }}>
-                    <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{a.title}</div>
-                    <div style={{ color: 'var(--text-tertiary)', fontSize: '11px', marginTop: '1px' }}>{a.shop_name} • {a.timestamp}</div>
-                  </div>
-                ))}
+
+              {/* Sub-tabs: Community vs Operational Alerts */}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setNotifTab('community')}
+                  style={{
+                    flex: 1,
+                    padding: '5px 8px',
+                    borderRadius: 'var(--radius-xs)',
+                    border: 'none',
+                    fontSize: '11.5px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    backgroundColor: notifTab === 'community' ? 'var(--apple-blue-tint)' : 'var(--bg-elevated)',
+                    color: notifTab === 'community' ? 'var(--apple-blue)' : 'var(--text-secondary)'
+                  }}
+                >
+                  Franchise Community ({unreadCommunityCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNotifTab('alerts')}
+                  style={{
+                    flex: 1,
+                    padding: '5px 8px',
+                    borderRadius: 'var(--radius-xs)',
+                    border: 'none',
+                    fontSize: '11.5px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    backgroundColor: notifTab === 'alerts' ? 'var(--apple-blue-tint)' : 'var(--bg-elevated)',
+                    color: notifTab === 'alerts' ? 'var(--apple-blue)' : 'var(--text-secondary)'
+                  }}
+                >
+                  Operational Risks ({alerts.length})
+                </button>
+              </div>
+
+              {/* Notifications Content */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto' }}>
+                {notifTab === 'community' ? (
+                  communityNotifications.length > 0 ? (
+                    communityNotifications.map((n) => (
+                      <div
+                        key={n.id}
+                        onClick={() => {
+                          setShowNotifications(false);
+                          if (onNavigateToCommunity) onNavigateToCommunity();
+                        }}
+                        style={{
+                          fontSize: '12px',
+                          padding: '8px 10px',
+                          borderRadius: 'var(--radius-sm)',
+                          background: n.read ? 'var(--bg-elevated)' : 'var(--apple-blue-tint)',
+                          border: '1px solid var(--border-subtle)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '2px' }}>
+                          {n.message}
+                        </div>
+                        <div style={{ color: 'var(--text-tertiary)', fontSize: '10.5px' }}>
+                          {n.created_at}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '12px' }}>
+                      No new community notifications
+                    </div>
+                  )
+                ) : (
+                  alerts.slice(0, 5).map((a) => (
+                    <div key={a.id} style={{ fontSize: '12px', padding: '8px 10px', borderRadius: 'var(--radius-sm)', background: 'rgba(118, 118, 128, 0.05)' }}>
+                      <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{a.title}</div>
+                      <div style={{ color: 'var(--text-tertiary)', fontSize: '11px', marginTop: '2px' }}>{a.shop_name} • {a.timestamp}</div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -296,6 +394,111 @@ export const Header: React.FC<HeaderProps> = ({
         >
           {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
         </button>
+
+        {/* Authenticated User Profile & Sign Out */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowUserMenu(!showUserMenu)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '4px 8px 4px 4px',
+              borderRadius: 'var(--radius-pill)',
+              border: '1px solid var(--border-subtle)',
+              background: 'rgba(118, 118, 128, 0.08)',
+              cursor: 'pointer',
+              color: 'var(--text-primary)'
+            }}
+            title="User Profile & Session"
+          >
+            <div style={{
+              width: '26px',
+              height: '26px',
+              borderRadius: '50%',
+              background: 'var(--apple-blue)',
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '11px',
+              fontWeight: 700
+            }}>
+              {authUser?.avatar_initials || (currentRole === 'HQ_OWNER' ? 'AS' : (currentRole === 'HQ_IT' ? 'PN' : (currentRole === 'STORE_MANAGER' ? 'RS' : 'AP')))}
+            </div>
+            <span style={{ fontSize: '12px', fontWeight: 600 }}>
+              {authUser?.name?.split(' ')[0] || (currentRole === 'HQ_OWNER' ? 'Aditya' : (currentRole === 'HQ_IT' ? 'Priya' : (currentRole === 'STORE_MANAGER' ? 'Ramesh' : 'Amit')))}
+            </span>
+            <ChevronDown size={13} style={{ color: 'var(--text-secondary)' }} />
+          </button>
+
+          {showUserMenu && (
+            <div style={{
+              position: 'absolute',
+              top: 'calc(100% + 8px)',
+              right: 0,
+              width: '240px',
+              background: 'var(--bg-elevated)',
+              backdropFilter: 'blur(20px)',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border-subtle)',
+              boxShadow: 'var(--shadow-lg)',
+              padding: '12px',
+              zIndex: 1000,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px'
+            }}>
+              <div style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>
+                <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-primary)' }}>
+                  {authUser?.name || 'Authenticated User'}
+                </div>
+                <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                  {authUser?.email || 'user@khatacopilot.com'}
+                </div>
+                <div style={{
+                  display: 'inline-block',
+                  marginTop: '6px',
+                  padding: '2px 8px',
+                  borderRadius: 'var(--radius-pill)',
+                  background: 'var(--apple-blue-tint)',
+                  color: 'var(--apple-blue)',
+                  fontSize: '10.5px',
+                  fontWeight: 700
+                }}>
+                  ROLE: {currentRole}
+                </div>
+              </div>
+
+              {onLogout && (
+                <button
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    onLogout();
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 10px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    background: 'rgba(255, 59, 48, 0.08)',
+                    color: 'var(--apple-red)',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    width: '100%',
+                    textAlign: 'left'
+                  }}
+                >
+                  <LogOut size={14} />
+                  <span>Sign Out of KhataCopilot</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
 
       </div>
 
