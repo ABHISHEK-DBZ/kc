@@ -1,0 +1,18 @@
+@import './styles/apple-theme.css';
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--bg-system);
+  color: var(--text-primary);
+  font-family: var(--font-family-apple);
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
