@@ -140,11 +140,11 @@ export function App() {
   // Core Data
   const [shops, setShops] = useState<Shop[]>(INITIAL_SHOPS);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(INITIAL_PURCHASE_ORDERS);
-  const [dailySales] = useState<DailySales[]>(INITIAL_DAILY_SALES);
-  const [customers] = useState<Customer[]>(INITIAL_CUSTOMERS);
-  const [udhaarRecords] = useState<UdhaarRecord[]>(INITIAL_UDHAAR_RECORDS);
-  const [inventoryItems] = useState<InventoryItem[]>(INITIAL_INVENTORY_ITEMS);
-  const [staffActivities] = useState<StaffActivity[]>(INITIAL_STAFF_ACTIVITIES);
+  const [dailySales, setDailySales] = useState<DailySales[]>(INITIAL_DAILY_SALES);
+  const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
+  const [udhaarRecords, setUdhaarRecords] = useState<UdhaarRecord[]>(INITIAL_UDHAAR_RECORDS);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>(INITIAL_INVENTORY_ITEMS);
+  const [staffActivities, setStaffActivities] = useState<StaffActivity[]>(INITIAL_STAFF_ACTIVITIES);
   const [alerts] = useState<AlertItem[]>(INITIAL_ALERTS);
   const [communityNotifications, setCommunityNotifications] = useState<CommunityNotification[]>(INITIAL_NOTIFICATIONS);
 
@@ -212,10 +212,18 @@ export function App() {
         api.getPurchaseOrders().then((freshPOs) => {
           if (freshPOs && freshPOs.length) setPurchaseOrders(freshPOs);
         }).catch(console.error);
-      } else if (event.type === 'SHOP_HEALTH_UPDATED') {
+      } else if (event.type === 'SHOP_HEALTH_UPDATED' || event.type === 'SHOP_CREATED') {
         api.getShops().then((freshShops) => {
           if (freshShops && freshShops.length) setShops(freshShops);
         }).catch(console.error);
+      } else if (event.type === 'TRANSACTION_RECORDED') {
+        api.getSales().then((s) => s && s.length && setDailySales(s)).catch(console.error);
+        api.getShops().then((s) => s && s.length && setShops(s)).catch(console.error);
+      } else if (event.type === 'INVENTORY_RESTOCKED') {
+        api.getInventory().then((i) => i && i.length && setInventoryItems(i)).catch(console.error);
+      } else if (event.type === 'UDHAAR_RECORDED') {
+        api.getUdhaar().then((u) => u && u.length && setUdhaarRecords(u)).catch(console.error);
+        api.getCustomers().then((c) => c && c.length && setCustomers(c)).catch(console.error);
       }
     });
 
@@ -226,6 +234,26 @@ export function App() {
 
     api.getPurchaseOrders().then((freshPOs) => {
       if (freshPOs && freshPOs.length) setPurchaseOrders(freshPOs);
+    }).catch(console.error);
+
+    api.getCustomers().then((freshCust) => {
+      if (freshCust && freshCust.length) setCustomers(freshCust);
+    }).catch(console.error);
+
+    api.getSales().then((freshSales) => {
+      if (freshSales && freshSales.length) setDailySales(freshSales);
+    }).catch(console.error);
+
+    api.getInventory().then((freshInv) => {
+      if (freshInv && freshInv.length) setInventoryItems(freshInv);
+    }).catch(console.error);
+
+    api.getUdhaar().then((freshUdh) => {
+      if (freshUdh && freshUdh.length) setUdhaarRecords(freshUdh);
+    }).catch(console.error);
+
+    api.getStaffActivities().then((freshAct) => {
+      if (freshAct && freshAct.length) setStaffActivities(freshAct);
     }).catch(console.error);
 
     // Fetch initial persistent agent runs, findings, and tasks for all 8 agents

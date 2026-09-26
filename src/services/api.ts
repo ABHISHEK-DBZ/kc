@@ -121,6 +121,27 @@ export const api = {
     return request(`/api/shops/${id}/udhaar`);
   },
 
+  // Operational Data (Scoped by authenticated user role)
+  async getCustomers(): Promise<any[]> {
+    return request('/api/customers');
+  },
+
+  async getSales(): Promise<any[]> {
+    return request('/api/sales');
+  },
+
+  async getInventory(): Promise<any[]> {
+    return request('/api/inventory');
+  },
+
+  async getUdhaar(): Promise<any[]> {
+    return request('/api/udhaar');
+  },
+
+  async getStaffActivities(): Promise<any[]> {
+    return request('/api/staff-activities');
+  },
+
   // Analytics
   async getOverviewAnalytics(): Promise<any> {
     return request('/api/analytics/overview');

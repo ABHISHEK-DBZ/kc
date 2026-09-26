@@ -19,6 +19,7 @@ import reportsRoutes from './routes/reports.js';
 import realtimeRoutes from './routes/realtime.js';
 import auditLogsRoutes from './routes/auditLogs.js';
 import searchRoutes from './routes/search.js';
+import operationsRoutes from './routes/operations.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -55,6 +56,7 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/realtime', realtimeRoutes);
 app.use('/api/audit-logs', auditLogsRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api', operationsRoutes);
 
 // Structured Error Handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

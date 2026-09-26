@@ -106,7 +106,7 @@ export class AgentOrchestrator {
       `).all() as any[];
 
       for (const job of pendingJobs) {
-        db.prepare('UPDATE agent_retry_queue SET status = "PROCESSING", updated_at = datetime("now") WHERE id = ?').run(job.id);
+        db.prepare("UPDATE agent_retry_queue SET status = 'PROCESSING', updated_at = datetime('now') WHERE id = ?").run(job.id);
         console.log(`[AgentOrchestrator] Executing retry attempt ${job.attempt_count}/${job.max_attempts} for agent '${job.agent_id}'`);
         
         let scope = null;
@@ -119,7 +119,7 @@ export class AgentOrchestrator {
         try {
           const res = await this.executeAgent(job.agent_id, 'EVENT', scope, `Auto-Retry #${job.attempt_count}`);
           if (res.status === 'Completed') {
-            db.prepare('UPDATE agent_retry_queue SET status = "RESOLVED", updated_at = datetime("now") WHERE id = ?').run(job.id);
+            db.prepare("UPDATE agent_retry_queue SET status = 'RESOLVED', updated_at = datetime('now') WHERE id = ?").run(job.id);
             this.recordEvent('AGENT_RETRY_RESOLVED', { agentId: job.agent_id, retryJobId: job.id, attempt: job.attempt_count });
           } else {
             throw new Error(res.errors || 'Retry execution failed');
@@ -135,7 +135,7 @@ export class AgentOrchestrator {
               WHERE id = ?
             `).run(nextAttempt, err.message, delaySec, job.id);
           } else {
-            db.prepare('UPDATE agent_retry_queue SET status = "ABANDONED", last_error = ?, updated_at = datetime("now") WHERE id = ?')
+            db.prepare("UPDATE agent_retry_queue SET status = 'ABANDONED', last_error = ?, updated_at = datetime('now') WHERE id = ?")
               .run(err.message, job.id);
             this.recordEvent('AGENT_RETRY_ABANDONED', { agentId: job.agent_id, retryJobId: job.id, maxAttemptsReached: true });
           }
@@ -404,7 +404,11 @@ export class AgentOrchestrator {
             SELECT id FROM purchase_orders WHERE sku_id = ? AND status IN ('Draft', 'Awaiting Approval')
           `).get(item.id) as { id: string } | undefined;
 
-          if (!existingPO) {
+          const existingTask = db.prepare(`
+            SELECT id FROM agent_tasks WHERE idempotency_key = ?
+          `).get(`po-draft-${item.id}`) as { id: string } | undefined;
+
+          if (!existingPO && !existingTask) {
             tasksGenerated++;
             const taskId = genId(`task-inv-${item.id}`);
             const poId = `PO-2026-INV-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -418,6 +422,7 @@ export class AgentOrchestrator {
                 description, evidence, recommendation, action_type, action_payload,
                 approval_required, idempotency_key, created_at, updated_at
               ) VALUES (?, 'inventory', ?, ?, ?, ?, 'AWAITING_APPROVAL', ?, ?, ?, ?, 'PURCHASE_ORDER_DRAFT', ?, 1, ?, datetime('now'), datetime('now'))
+              ON CONFLICT(idempotency_key) DO UPDATE SET updated_at = datetime('now')
             `).run(
               taskId, runId, shop.id, shop.name, isCritical ? 'High' : 'Medium',
               `Purchase Order Draft: ${item.item_name} (${reorderQty} ${item.unit})`,
@@ -533,6 +538,7 @@ export class AgentOrchestrator {
               id, agent_id, run_id, shop_id, shop_name, priority, status, title,
               description, evidence, recommendation, action_type, approval_required, idempotency_key, created_at, updated_at
             ) VALUES (?, 'revenue-anomaly', ?, ?, ?, 'High', 'QUEUED', ?, ?, ?, ?, 'STORE_AUDIT_INTERVENTION', 0, ?, datetime('now'), datetime('now'))
+            ON CONFLICT(idempotency_key) DO UPDATE SET updated_at = datetime('now')
           `).run(
             taskId, runId, shop.id, shop.name,
             `Investigate -${pctDrop.toFixed(1)}% Revenue Drop at ${shop.name}`,
@@ -602,6 +608,7 @@ export class AgentOrchestrator {
               id, agent_id, run_id, shop_id, shop_name, priority, status, title,
               description, evidence, recommendation, action_type, approval_required, idempotency_key, created_at, updated_at
             ) VALUES (?, 'cash-risk', ?, ?, ?, 'High', 'QUEUED', ?, ?, ?, ?, 'CASH_REGISTER_AUDIT', 0, ?, datetime('now'), datetime('now'))
+            ON CONFLICT(idempotency_key) DO UPDATE SET updated_at = datetime('now')
           `).run(
             taskId, runId, shop.id, shop.name,
             `Audit End-of-Shift Shortage (-₹${Math.abs(variance)})`,
@@ -674,6 +681,7 @@ export class AgentOrchestrator {
               id, agent_id, run_id, shop_id, shop_name, priority, status, title,
               description, evidence, recommendation, action_type, approval_required, idempotency_key, created_at, updated_at
             ) VALUES (?, 'udhaar-risk', ?, ?, ?, 'High', 'QUEUED', ?, ?, ?, ?, 'FREEZE_CREDIT_DISPATCH_REMINDERS', 0, ?, datetime('now'), datetime('now'))
+            ON CONFLICT(idempotency_key) DO UPDATE SET updated_at = datetime('now')
           `).run(
             taskId, runId, shop.id, shop.name,
             `Enforce Credit Freeze on ${criticalOverdue.length} Accounts at ${shop.name}`,
@@ -817,6 +825,7 @@ export class AgentOrchestrator {
               id, agent_id, run_id, shop_id, shop_name, priority, status, title,
               description, evidence, recommendation, action_type, approval_required, idempotency_key, created_at, updated_at
             ) VALUES (?, 'retention', ?, ?, ?, 'High', 'QUEUED', ?, ?, ?, ?, 'FIELD_MANAGER_DISPATCH', 1, ?, datetime('now'), datetime('now'))
+            ON CONFLICT(idempotency_key) DO UPDATE SET updated_at = datetime('now')
           `).run(
             taskId, runId, shop.id, shop.name,
             `Franchise Churn Risk Intervention: ${shop.name}`,
