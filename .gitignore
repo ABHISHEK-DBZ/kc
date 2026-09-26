@@ -45,3 +45,6 @@ server/node_modules/
 # OS files
 Thumbs.db
 *.tmp
+
+# SQLite Local Database
+data/
