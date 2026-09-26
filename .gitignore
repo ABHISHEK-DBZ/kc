@@ -48,3 +48,6 @@ Thumbs.db
 
 # SQLite Local Database
 data/
+
+# Supabase CLI temp files
+supabase/.temp/
