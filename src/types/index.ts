@@ -212,6 +212,86 @@ export interface InventoryItem {
   suggested_reorder_qty: number;
 }
 
+export type RecommendationType = 
+  | 'BUY_NOW' 
+  | 'BUY_MORE' 
+  | 'BUY_NORMAL' 
+  | 'WAIT' 
+  | 'DO_NOT_BUY' 
+  | 'URGENT_REORDER' 
+  | 'SLOW_MOVING' 
+  | 'OVERSTOCK_RISK';
+
+export type ProfitOpportunityLevel = 'HIGH' | 'MEDIUM' | 'LOW' | 'NEUTRAL';
+
+export interface SmartRecommendation {
+  id: string;
+  product_id: string;
+  product_name: string;
+  shop_id: string;
+  shop_name: string;
+  category: string;
+  sku_id: string;
+  current_stock: number;
+  sales_velocity: number;
+  sales_7d: number;
+  sales_14d: number;
+  sales_30d: number;
+  sales_trend_pct: number;
+  stock_coverage_days: number;
+  unit_price: number;
+  cost_price: number;
+  unit_profit: number;
+  margin_pct: number;
+  unit: string;
+  supplier: string;
+  recommendation_type: RecommendationType;
+  suggested_order_qty: number;
+  profit_opportunity: ProfitOpportunityLevel;
+  lead_time_days: number;
+  safety_stock: number;
+  min_order_qty?: number;
+  projected_demand: number;
+  formula_breakdown?: {
+    formula: string;
+    leadTimeDays: number;
+    cycleDays: number;
+    dailySales: number;
+    safetyStock: number;
+    currentStock: number;
+    projectedDemand: number;
+    grossNeeded: number;
+    multiplier: number;
+    finalSuggestedQty: number;
+  } | null;
+  reason: string;
+  confidence: number;
+  signals?: {
+    currentStock: number;
+    sales7d: number;
+    sales14d: number;
+    sales30d: number;
+    salesVelocity: number;
+    salesTrendPct: number;
+    stockCoverageDays: number;
+    unitPrice: number;
+    costPrice: number;
+    unitProfit: number;
+    marginPct: number;
+    reorderThreshold?: number;
+    leadTimeDays: number;
+    safetyStock: number;
+    minOrderQty: number;
+    supplier: string;
+    category: string;
+  } | null;
+  status: 'ACTIVE' | 'DISMISSED' | 'ORDERED';
+  po_draft_id?: string | null;
+  agent_run_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface StaffActivity {
   id: string;
   shop_id: string;

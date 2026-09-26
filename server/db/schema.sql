@@ -397,6 +397,46 @@ CREATE TABLE IF NOT EXISTS report_jobs (
     completed_at TEXT
 );
 
+-- 22. AI Purchase Recommendations & Smart Reorder Intelligence
+CREATE TABLE IF NOT EXISTS inventory_recommendations (
+    id TEXT PRIMARY KEY,
+    product_id TEXT NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
+    product_name TEXT NOT NULL,
+    shop_id TEXT NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+    shop_name TEXT NOT NULL,
+    category TEXT NOT NULL,
+    sku_id TEXT NOT NULL,
+    current_stock REAL NOT NULL,
+    sales_velocity REAL NOT NULL,
+    sales_7d REAL NOT NULL,
+    sales_14d REAL NOT NULL,
+    sales_30d REAL NOT NULL,
+    sales_trend_pct REAL NOT NULL,
+    stock_coverage_days REAL NOT NULL,
+    unit_price REAL NOT NULL,
+    cost_price REAL NOT NULL,
+    unit_profit REAL NOT NULL,
+    margin_pct REAL NOT NULL,
+    unit TEXT NOT NULL DEFAULT 'units',
+    supplier TEXT NOT NULL,
+    recommendation_type TEXT NOT NULL CHECK(recommendation_type IN ('BUY_NOW', 'BUY_MORE', 'BUY_NORMAL', 'WAIT', 'DO_NOT_BUY', 'URGENT_REORDER', 'SLOW_MOVING', 'OVERSTOCK_RISK')),
+    suggested_order_qty REAL NOT NULL,
+    profit_opportunity TEXT NOT NULL CHECK(profit_opportunity IN ('HIGH', 'MEDIUM', 'LOW', 'NEUTRAL')),
+    lead_time_days INTEGER DEFAULT 4,
+    safety_stock REAL DEFAULT 15,
+    projected_demand REAL DEFAULT 0,
+    formula_breakdown TEXT,
+    reason TEXT NOT NULL,
+    confidence REAL NOT NULL DEFAULT 0.92,
+    signals TEXT,
+    status TEXT DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE', 'DISMISSED', 'ORDERED')),
+    po_draft_id TEXT REFERENCES purchase_orders(id),
+    agent_run_id TEXT REFERENCES agent_runs(id),
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(shop_id, product_id)
+);
+
 -- High-performance database indexes
 CREATE INDEX IF NOT EXISTS idx_shops_region ON shops(region);
 CREATE INDEX IF NOT EXISTS idx_shops_franchise ON shops(franchise_id);
@@ -412,3 +452,6 @@ CREATE INDEX IF NOT EXISTS idx_agent_tasks_shop ON agent_tasks(shop_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_actor ON audit_logs(actor_id);
 CREATE INDEX IF NOT EXISTS idx_community_posts_author ON community_posts(author_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_inv_rec_shop ON inventory_recommendations(shop_id);
+CREATE INDEX IF NOT EXISTS idx_inv_rec_type ON inventory_recommendations(recommendation_type);
+CREATE INDEX IF NOT EXISTS idx_inv_rec_status ON inventory_recommendations(status);

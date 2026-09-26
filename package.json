@@ -12,6 +12,7 @@
     "build": "tsc -b && vite build",
     "test:agents": "tsx audit_verifier.ts",
     "test:e2e": "tsx test_e2e_full.ts",
+    "test:recommendations": "tsx test_smart_reorder.ts",
     "lint": "oxlint",
     "preview": "vite preview"
   },

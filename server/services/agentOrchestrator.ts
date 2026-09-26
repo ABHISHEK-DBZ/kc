@@ -1,6 +1,7 @@
 import { db } from '../db/database.js';
 import { realtimeHub } from './realtimeHub.js';
 import { groqService } from './groqService.js';
+import { inventoryRecommendationEngine } from './inventoryRecommendationEngine.js';
 
 export interface AgentRunRecord {
   id: string;
@@ -464,6 +465,16 @@ export class AgentOrchestrator {
           }
         }
       }
+    }
+
+    // Generate & Persist Smart Reorder & Purchase Recommendations
+    try {
+      await inventoryRecommendationEngine.generateAndPersistRecommendations(
+        runId,
+        shops.length === 1 ? shops[0].id : undefined
+      );
+    } catch (err: any) {
+      console.error('[InventoryAgent] Recommendation engine error:', err);
     }
 
     return {

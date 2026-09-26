@@ -190,6 +190,108 @@ Return valid JSON:
 
     return { matched: false, similarityScore: Math.round(highestScore * 100) };
   }
+
+  // 4. Natural Language Purchase Recommendation Explanation
+  async explainPurchaseRecommendation(params: {
+    productName: string;
+    shopName: string;
+    currentStock: number;
+    salesVelocity: number;
+    salesTrendPct: number;
+    stockCoverageDays: number;
+    unitPrice: number;
+    costPrice: number;
+    unitProfit: number;
+    marginPct: number;
+    recommendationType: string;
+    suggestedOrderQty: number;
+    profitOpportunity: string;
+  }): Promise<{ reason: string; opportunityExplanation: string }> {
+    if (this.hasKey && this.client) {
+      try {
+        const prompt = `You are KhataCopilot HQ Retail AI Inventory Intelligence. Provide concise, business-grounded reasoning for this replenishment decision:
+Product: ${params.productName} (${params.shopName})
+Current Stock: ${params.currentStock}
+Sales Velocity: ${params.salesVelocity} units/day
+30-Day Sales Trend: ${params.salesTrendPct >= 0 ? '+' : ''}${params.salesTrendPct}%
+Stock Coverage Runway: ${params.stockCoverageDays.toFixed(1)} days
+Unit Profit: ₹${params.unitProfit} (Margin: ${params.marginPct.toFixed(1)}%)
+Recommendation: ${params.recommendationType}
+Suggested Order: ${params.suggestedOrderQty} units
+Profit Opportunity: ${params.profitOpportunity}
+
+Important Rules:
+- Never fabricate numbers or metrics. Use only the provided figures.
+- Do NOT promise guaranteed profit. Use wording such as "estimated", "potential", "based on recent trends".
+- Keep "reason" to 1-2 concise, executive sentences.
+- Keep "opportunityExplanation" to 1 sentence explaining the profit opportunity.
+
+Return valid JSON only:
+{
+  "reason": "...",
+  "opportunityExplanation": "..."
+}`;
+
+        const chat = await this.client.chat.completions.create({
+          messages: [{ role: 'user', content: prompt }],
+          model: 'llama-3.1-8b-instant',
+          temperature: 0.2,
+          response_format: { type: 'json_object' }
+        });
+
+        const content = chat.choices[0]?.message?.content;
+        if (content) {
+          const parsed = JSON.parse(content);
+          if (parsed.reason) {
+            return parsed;
+          }
+        }
+      } catch (err) {
+        console.error('[GroqAIService] explainPurchaseRecommendation API call failed, using deterministic reasoning:', err);
+      }
+    }
+
+    // Deterministic High-Precision Fallback (100% reliable, zero hallucination)
+    let reason = '';
+    let opportunityExplanation = '';
+
+    const trendSign = params.salesTrendPct >= 0 ? `+${params.salesTrendPct.toFixed(1)}%` : `${params.salesTrendPct.toFixed(1)}%`;
+    const coverageStr = params.stockCoverageDays < 999 ? `~${params.stockCoverageDays.toFixed(1)} days` : 'indefinite';
+
+    switch (params.recommendationType) {
+      case 'URGENT_REORDER':
+        reason = `Critical stockout predicted in ${coverageStr} at current velocity of ${params.salesVelocity.toFixed(1)}/day. Urgent purchase order required to avoid retail stockout.`;
+        opportunityExplanation = `Preventing imminent stockout protects an estimated daily gross margin of ₹${Math.round(params.salesVelocity * params.unitProfit)}.`;
+        break;
+      case 'BUY_MORE':
+        reason = `Demand has accelerated ${trendSign} over recent cycles and current stock covers only ${coverageStr}. Strong recent velocity and healthy margin (₹${params.unitProfit}/unit) justify increasing order volume.`;
+        opportunityExplanation = `High estimated profit opportunity: maintaining adequate stock can help capture rising customer demand.`;
+        break;
+      case 'BUY_NOW':
+      case 'BUY_NORMAL':
+        reason = `Current inventory (${params.currentStock}) is nearing reorder threshold with steady velocity (${params.salesVelocity.toFixed(1)}/day). Routine replenishment maintains optimal buffer.`;
+        opportunityExplanation = `Standard margin stability based on steady demand patterns.`;
+        break;
+      case 'WAIT':
+        reason = `Current stock covers approximately ${coverageStr} of projected demand. Velocity is stable and existing inventory buffer is sufficient.`;
+        opportunityExplanation = `Capital allocation is optimal; no additional working capital required at this time.`;
+        break;
+      case 'DO_NOT_BUY':
+      case 'OVERSTOCK_RISK':
+        reason = `Sales velocity is low (${params.salesVelocity.toFixed(1)}/day) and current inventory already covers approximately ${coverageStr} of demand. Additional purchasing may increase dead-stock risk.`;
+        opportunityExplanation = `Low profit upside with elevated working capital lockup risk.`;
+        break;
+      case 'SLOW_MOVING':
+        reason = `Sales velocity has decelerated (${trendSign} trend) and current stock covers ${coverageStr}. Recommend promotional bundling before issuing reorders.`;
+        opportunityExplanation = `Estimated potential profit is low; focus on liquidating existing units.`;
+        break;
+      default:
+        reason = `Evaluated inventory signals: ${params.currentStock} in stock, ${params.salesVelocity.toFixed(1)} daily burn rate, ${trendSign} demand velocity.`;
+        opportunityExplanation = `Estimated opportunity based on recent store-level velocity.`;
+    }
+
+    return { reason, opportunityExplanation };
+  }
 }
 
 export const groqService = new GroqAIService();

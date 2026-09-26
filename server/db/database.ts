@@ -25,6 +25,27 @@ export function initDatabase() {
   const schemaPath = path.join(__dirname, 'schema.sql');
   const schemaSql = fs.readFileSync(schemaPath, 'utf8');
   db.exec(schemaSql);
+
+  // Non-destructive migrations for inventory intelligence columns
+  const migrations = [
+    "ALTER TABLE inventory_items ADD COLUMN sales_7d REAL DEFAULT 0",
+    "ALTER TABLE inventory_items ADD COLUMN sales_14d REAL DEFAULT 0",
+    "ALTER TABLE inventory_items ADD COLUMN sales_30d REAL DEFAULT 0",
+    "ALTER TABLE inventory_items ADD COLUMN sales_trend_pct REAL DEFAULT 0",
+    "ALTER TABLE inventory_items ADD COLUMN lead_time_days INTEGER DEFAULT 4",
+    "ALTER TABLE inventory_items ADD COLUMN safety_stock REAL DEFAULT 15",
+    "ALTER TABLE inventory_items ADD COLUMN min_order_qty REAL DEFAULT 12",
+    "ALTER TABLE purchase_orders ADD COLUMN recommendation_id TEXT"
+  ];
+
+  for (const sql of migrations) {
+    try {
+      db.exec(sql);
+    } catch {
+      // Column already exists
+    }
+  }
+
   console.log(`[Database] Initialized and verified at: ${DB_PATH}`);
 }
 

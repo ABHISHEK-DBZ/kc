@@ -1,13 +1,51 @@
 import bcrypt from 'bcryptjs';
 import { db, initDatabase } from './database.js';
 
+export const INVENTORY_SEED = [
+  { id: 'inv-01', shop_id: 'shop-01', item_name: 'Amul Taaza Milk (1L Tetra)', category: 'Dairy & Fresh', current_stock: 9, reorder_threshold: 25, sales_velocity: 7.2, unit_price: 74, cost_price: 66, unit: 'packs', supplier: 'Amul Dairy Pune Distributor', last_restock_date: '2026-09-21', estimated_stockout_days: 1.3, estimated_stockout_date: 'Tomorrow, 5:00 PM', suggested_reorder_qty: 40, sales_7d: 50, sales_14d: 96, sales_30d: 175, sales_trend_pct: 22.0, lead_time_days: 2, safety_stock: 15, min_order_qty: 20 },
+  { id: 'inv-02', shop_id: 'shop-01', item_name: 'Fortune Sunlite Sunflower Oil (1L)', category: 'Edible Oils', current_stock: 12, reorder_threshold: 30, sales_velocity: 6.8, unit_price: 155, cost_price: 138, unit: 'pouches', supplier: 'Adani Wilmar West Agency', last_restock_date: '2026-09-18', estimated_stockout_days: 1.8, estimated_stockout_date: 'In 1.8 days', suggested_reorder_qty: 50, sales_7d: 48, sales_14d: 92, sales_30d: 180, sales_trend_pct: 14.5, lead_time_days: 4, safety_stock: 20, min_order_qty: 24 },
+  { id: 'inv-03', shop_id: 'shop-01', item_name: 'Aashirvaad Shudh Chakki Atta (10kg)', category: 'Staples & Grains', current_stock: 8, reorder_threshold: 20, sales_velocity: 4.5, unit_price: 465, cost_price: 415, unit: 'bags', supplier: 'ITC Limited Pune Depot', last_restock_date: '2026-09-19', estimated_stockout_days: 1.8, estimated_stockout_date: 'In 1.8 days', suggested_reorder_qty: 30, sales_7d: 32, sales_14d: 61, sales_30d: 125, sales_trend_pct: 8.0, lead_time_days: 3, safety_stock: 12, min_order_qty: 15 },
+  { id: 'inv-coke', shop_id: 'shop-01', item_name: 'Coca-Cola 750ml', category: 'Snacks & Beverages', current_stock: 8, reorder_threshold: 24, sales_velocity: 6.0, unit_price: 40, cost_price: 28, unit: 'bottles', supplier: 'Hindustan Coca-Cola West', last_restock_date: '2026-09-22', estimated_stockout_days: 1.3, estimated_stockout_date: 'Tomorrow, 2:00 PM', suggested_reorder_qty: 48, sales_7d: 42, sales_14d: 80, sales_30d: 155, sales_trend_pct: 18.0, lead_time_days: 3, safety_stock: 15, min_order_qty: 24 },
+  { id: 'inv-prodx', shop_id: 'shop-01', item_name: 'Product X (Gourmet Olive Oil 500ml)', category: 'Edible Oils', current_stock: 74, reorder_threshold: 15, sales_velocity: 0.4, unit_price: 80, cost_price: 75, unit: 'bottles', supplier: 'Mediterranean Direct Imports', last_restock_date: '2026-08-15', estimated_stockout_days: 185.0, estimated_stockout_date: 'In 185 days', suggested_reorder_qty: 0, sales_7d: 3, sales_14d: 6, sales_30d: 18, sales_trend_pct: -32.0, lead_time_days: 5, safety_stock: 5, min_order_qty: 6 },
+  { id: 'inv-prody', shop_id: 'shop-01', item_name: 'Product Y (Organic Chia Seeds 250g)', category: 'Staples & Grains', current_stock: 11, reorder_threshold: 25, sales_velocity: 4.0, unit_price: 220, cost_price: 160, unit: 'packs', supplier: 'Organic India Pune Agency', last_restock_date: '2026-09-20', estimated_stockout_days: 2.75, estimated_stockout_date: 'In 2.7 days', suggested_reorder_qty: 40, sales_7d: 28, sales_14d: 52, sales_30d: 95, sales_trend_pct: 38.0, lead_time_days: 4, safety_stock: 12, min_order_qty: 12 },
+  { id: 'inv-surf', shop_id: 'shop-01', item_name: 'Surf Excel Quick Wash Detergent (1kg)', category: 'Personal Care', current_stock: 35, reorder_threshold: 30, sales_velocity: 1.8, unit_price: 140, cost_price: 122, unit: 'packs', supplier: 'Hindustan Unilever West Depot', last_restock_date: '2026-09-15', estimated_stockout_days: 19.4, estimated_stockout_date: 'In 19 days', suggested_reorder_qty: 0, sales_7d: 12, sales_14d: 25, sales_30d: 54, sales_trend_pct: 2.0, lead_time_days: 4, safety_stock: 10, min_order_qty: 12 },
+  { id: 'inv-masala', shop_id: 'shop-01', item_name: 'Everest Royal Garam Masala (100g)', category: 'Spices & Condiments', current_stock: 6, reorder_threshold: 20, sales_velocity: 3.5, unit_price: 98, cost_price: 68, unit: 'packs', supplier: 'Everest Spices Western Agency', last_restock_date: '2026-09-21', estimated_stockout_days: 1.7, estimated_stockout_date: 'In 1.7 days', suggested_reorder_qty: 36, sales_7d: 24, sales_14d: 46, sales_30d: 82, sales_trend_pct: 28.0, lead_time_days: 3, safety_stock: 12, min_order_qty: 12 },
+  { id: 'inv-dead', shop_id: 'shop-01', item_name: 'Imported Penne Rigate Pasta (500g)', category: 'Staples & Grains', current_stock: 48, reorder_threshold: 15, sales_velocity: 0.3, unit_price: 160, cost_price: 145, unit: 'boxes', supplier: 'Euro Gourmet Traders Mumbai', last_restock_date: '2026-08-10', estimated_stockout_days: 160.0, estimated_stockout_date: 'In 160 days', suggested_reorder_qty: 0, sales_7d: 2, sales_14d: 4, sales_30d: 15, sales_trend_pct: -40.0, lead_time_days: 7, safety_stock: 5, min_order_qty: 6 },
+  { id: 'inv-04', shop_id: 'shop-02', item_name: 'Amul Butter (500g)', category: 'Dairy & Fresh', current_stock: 5, reorder_threshold: 15, sales_velocity: 4.1, unit_price: 285, cost_price: 258, unit: 'packs', supplier: 'Amul Mumbai Depot', last_restock_date: '2026-09-20', estimated_stockout_days: 1.2, estimated_stockout_date: 'Tomorrow, 3:00 PM', suggested_reorder_qty: 30, sales_7d: 29, sales_14d: 55, sales_30d: 110, sales_trend_pct: 12.0, lead_time_days: 2, safety_stock: 10, min_order_qty: 15 },
+  { id: 'inv-05', shop_id: 'shop-02', item_name: 'Tata Salt Vacuum Evaporated (1kg)', category: 'Staples & Grains', current_stock: 14, reorder_threshold: 40, sales_velocity: 11.2, unit_price: 28, cost_price: 24, unit: 'packs', supplier: 'Tata Consumer Products West Depot', last_restock_date: '2026-09-19', estimated_stockout_days: 1.25, estimated_stockout_date: 'Tomorrow, 4:00 PM', suggested_reorder_qty: 60, sales_7d: 78, sales_14d: 150, sales_30d: 310, sales_trend_pct: 5.0, lead_time_days: 3, safety_stock: 25, min_order_qty: 30 },
+  { id: 'inv-06', shop_id: 'shop-03', item_name: 'Fortune Kachi Ghani Mustard Oil (1L)', category: 'Edible Oils', current_stock: 3, reorder_threshold: 20, sales_velocity: 5.5, unit_price: 165, cost_price: 145, unit: 'bottles', supplier: 'Adani Wilmar Thane', last_restock_date: '2026-09-17', estimated_stockout_days: 0.5, estimated_stockout_date: 'Today, 6:00 PM (Critical)', suggested_reorder_qty: 35, sales_7d: 38, sales_14d: 72, sales_30d: 140, sales_trend_pct: 35.0, lead_time_days: 3, safety_stock: 15, min_order_qty: 20 },
+  { id: 'inv-07', shop_id: 'shop-12', item_name: 'Nandini GoodLife Milk (500ml)', category: 'Dairy & Fresh', current_stock: 8, reorder_threshold: 30, sales_velocity: 18.0, unit_price: 32, cost_price: 28, unit: 'packs', supplier: 'KMF Nandini Dairy Bengaluru', last_restock_date: '2026-09-24', estimated_stockout_days: 0.44, estimated_stockout_date: 'Today, 4:00 PM (Urgent)', suggested_reorder_qty: 80, sales_7d: 126, sales_14d: 245, sales_30d: 490, sales_trend_pct: 12.0, lead_time_days: 2, safety_stock: 30, min_order_qty: 50 }
+];
+
+export function seedInventoryItems() {
+  console.log('[Seed] Seeding predictive inventory with runway metrics and demand signals...');
+  const insertInventory = db.prepare(`
+    INSERT OR REPLACE INTO inventory_items (
+      id, shop_id, item_name, category, current_stock, reorder_threshold, sales_velocity,
+      unit_price, cost_price, unit, supplier, last_restock_date, estimated_stockout_days,
+      estimated_stockout_date, suggested_reorder_qty,
+      sales_7d, sales_14d, sales_30d, sales_trend_pct, lead_time_days, safety_stock, min_order_qty
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  for (const item of INVENTORY_SEED) {
+    insertInventory.run(
+      item.id, item.shop_id, item.item_name, item.category, item.current_stock, item.reorder_threshold,
+      item.sales_velocity, item.unit_price, item.cost_price, item.unit, item.supplier, item.last_restock_date,
+      item.estimated_stockout_days, item.estimated_stockout_date, item.suggested_reorder_qty,
+      item.sales_7d, item.sales_14d, item.sales_30d, item.sales_trend_pct, item.lead_time_days, item.safety_stock, item.min_order_qty
+    );
+  }
+}
+
 export async function seedDatabase() {
   console.log('[Seed] Ensuring schema is up to date...');
   initDatabase();
 
   const countShops = db.prepare('SELECT count(*) as count FROM shops').get() as { count: number };
   if (countShops && countShops.count > 0) {
-    console.log(`[Seed] Database already has ${countShops.count} shops. Skipping full reseed.`);
+    console.log(`[Seed] Database already has ${countShops.count} shops. Updating inventory items & schema...`);
+    seedInventoryItems();
     return;
   }
 
@@ -269,30 +307,38 @@ export async function seedDatabase() {
   }
 
   // 7. Seed Inventory Items
-  console.log('[Seed] Seeding predictive inventory with runway metrics...');
+  console.log('[Seed] Seeding predictive inventory with runway metrics and demand signals...');
   const insertInventory = db.prepare(`
     INSERT OR REPLACE INTO inventory_items (
       id, shop_id, item_name, category, current_stock, reorder_threshold, sales_velocity,
       unit_price, cost_price, unit, supplier, last_restock_date, estimated_stockout_days,
-      estimated_stockout_date, suggested_reorder_qty
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      estimated_stockout_date, suggested_reorder_qty,
+      sales_7d, sales_14d, sales_30d, sales_trend_pct, lead_time_days, safety_stock, min_order_qty
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const INVENTORY_SEED = [
-    { id: 'inv-01', shop_id: 'shop-01', item_name: 'Amul Taaza Milk (1L Tetra)', category: 'Dairy & Fresh', current_stock: 9, reorder_threshold: 25, sales_velocity: 7.2, unit_price: 74, cost_price: 66, unit: 'packs', supplier: 'Amul Dairy Pune Distributor', last_restock_date: '2026-09-21', estimated_stockout_days: 1.3, estimated_stockout_date: 'Tomorrow, 5:00 PM', suggested_reorder_qty: 40 },
-    { id: 'inv-02', shop_id: 'shop-01', item_name: 'Fortune Sunlite Sunflower Oil (1L)', category: 'Edible Oils', current_stock: 12, reorder_threshold: 30, sales_velocity: 6.8, unit_price: 155, cost_price: 138, unit: 'pouches', supplier: 'Adani Wilmar West Agency', last_restock_date: '2026-09-18', estimated_stockout_days: 1.8, estimated_stockout_date: 'In 1.8 days', suggested_reorder_qty: 50 },
-    { id: 'inv-03', shop_id: 'shop-01', item_name: 'Aashirvaad Shudh Chakki Atta (10kg)', category: 'Staples & Grains', current_stock: 8, reorder_threshold: 20, sales_velocity: 4.5, unit_price: 465, cost_price: 415, unit: 'bags', supplier: 'ITC Limited Pune Depot', last_restock_date: '2026-09-19', estimated_stockout_days: 1.8, estimated_stockout_date: 'In 1.8 days', suggested_reorder_qty: 30 },
-    { id: 'inv-04', shop_id: 'shop-02', item_name: 'Amul Butter (500g)', category: 'Dairy & Fresh', current_stock: 5, reorder_threshold: 15, sales_velocity: 4.1, unit_price: 285, cost_price: 258, unit: 'packs', supplier: 'Amul Mumbai Depot', last_restock_date: '2026-09-20', estimated_stockout_days: 1.2, estimated_stockout_date: 'Tomorrow, 3:00 PM', suggested_reorder_qty: 30 },
-    { id: 'inv-05', shop_id: 'shop-02', item_name: 'Tata Salt Vacuum Evaporated (1kg)', category: 'Staples & Grains', current_stock: 14, reorder_threshold: 40, sales_velocity: 11.2, unit_price: 28, cost_price: 24, unit: 'packs', supplier: 'Tata Consumer Products West Depot', last_restock_date: '2026-09-19', estimated_stockout_days: 1.25, estimated_stockout_date: 'Tomorrow, 4:00 PM', suggested_reorder_qty: 60 },
-    { id: 'inv-06', shop_id: 'shop-03', item_name: 'Fortune Kachi Ghani Mustard Oil (1L)', category: 'Edible Oils', current_stock: 3, reorder_threshold: 20, sales_velocity: 5.5, unit_price: 165, cost_price: 145, unit: 'bottles', supplier: 'Adani Wilmar Thane', last_restock_date: '2026-09-17', estimated_stockout_days: 0.5, estimated_stockout_date: 'Today, 6:00 PM (Critical)', suggested_reorder_qty: 35 },
-    { id: 'inv-07', shop_id: 'shop-12', item_name: 'Nandini GoodLife Milk (500ml)', category: 'Dairy & Fresh', current_stock: 8, reorder_threshold: 30, sales_velocity: 18.0, unit_price: 32, cost_price: 28, unit: 'packs', supplier: 'KMF Nandini Dairy Bengaluru', last_restock_date: '2026-09-24', estimated_stockout_days: 0.44, estimated_stockout_date: 'Today, 4:00 PM (Urgent)', suggested_reorder_qty: 80 }
+    { id: 'inv-01', shop_id: 'shop-01', item_name: 'Amul Taaza Milk (1L Tetra)', category: 'Dairy & Fresh', current_stock: 9, reorder_threshold: 25, sales_velocity: 7.2, unit_price: 74, cost_price: 66, unit: 'packs', supplier: 'Amul Dairy Pune Distributor', last_restock_date: '2026-09-21', estimated_stockout_days: 1.3, estimated_stockout_date: 'Tomorrow, 5:00 PM', suggested_reorder_qty: 40, sales_7d: 50, sales_14d: 96, sales_30d: 175, sales_trend_pct: 22.0, lead_time_days: 2, safety_stock: 15, min_order_qty: 20 },
+    { id: 'inv-02', shop_id: 'shop-01', item_name: 'Fortune Sunlite Sunflower Oil (1L)', category: 'Edible Oils', current_stock: 12, reorder_threshold: 30, sales_velocity: 6.8, unit_price: 155, cost_price: 138, unit: 'pouches', supplier: 'Adani Wilmar West Agency', last_restock_date: '2026-09-18', estimated_stockout_days: 1.8, estimated_stockout_date: 'In 1.8 days', suggested_reorder_qty: 50, sales_7d: 48, sales_14d: 92, sales_30d: 180, sales_trend_pct: 14.5, lead_time_days: 4, safety_stock: 20, min_order_qty: 24 },
+    { id: 'inv-03', shop_id: 'shop-01', item_name: 'Aashirvaad Shudh Chakki Atta (10kg)', category: 'Staples & Grains', current_stock: 8, reorder_threshold: 20, sales_velocity: 4.5, unit_price: 465, cost_price: 415, unit: 'bags', supplier: 'ITC Limited Pune Depot', last_restock_date: '2026-09-19', estimated_stockout_days: 1.8, estimated_stockout_date: 'In 1.8 days', suggested_reorder_qty: 30, sales_7d: 32, sales_14d: 61, sales_30d: 125, sales_trend_pct: 8.0, lead_time_days: 3, safety_stock: 12, min_order_qty: 15 },
+    { id: 'inv-coke', shop_id: 'shop-01', item_name: 'Coca-Cola 750ml', category: 'Snacks & Beverages', current_stock: 8, reorder_threshold: 24, sales_velocity: 6.0, unit_price: 40, cost_price: 28, unit: 'bottles', supplier: 'Hindustan Coca-Cola West', last_restock_date: '2026-09-22', estimated_stockout_days: 1.3, estimated_stockout_date: 'Tomorrow, 2:00 PM', suggested_reorder_qty: 48, sales_7d: 42, sales_14d: 80, sales_30d: 155, sales_trend_pct: 18.0, lead_time_days: 3, safety_stock: 15, min_order_qty: 24 },
+    { id: 'inv-prodx', shop_id: 'shop-01', item_name: 'Product X (Gourmet Olive Oil 500ml)', category: 'Edible Oils', current_stock: 74, reorder_threshold: 15, sales_velocity: 0.4, unit_price: 80, cost_price: 75, unit: 'bottles', supplier: 'Mediterranean Direct Imports', last_restock_date: '2026-08-15', estimated_stockout_days: 185.0, estimated_stockout_date: 'In 185 days', suggested_reorder_qty: 0, sales_7d: 3, sales_14d: 6, sales_30d: 18, sales_trend_pct: -32.0, lead_time_days: 5, safety_stock: 5, min_order_qty: 6 },
+    { id: 'inv-prody', shop_id: 'shop-01', item_name: 'Product Y (Organic Chia Seeds 250g)', category: 'Staples & Grains', current_stock: 11, reorder_threshold: 25, sales_velocity: 4.0, unit_price: 220, cost_price: 160, unit: 'packs', supplier: 'Organic India Pune Agency', last_restock_date: '2026-09-20', estimated_stockout_days: 2.75, estimated_stockout_date: 'In 2.7 days', suggested_reorder_qty: 40, sales_7d: 28, sales_14d: 52, sales_30d: 95, sales_trend_pct: 38.0, lead_time_days: 4, safety_stock: 12, min_order_qty: 12 },
+    { id: 'inv-surf', shop_id: 'shop-01', item_name: 'Surf Excel Quick Wash Detergent (1kg)', category: 'Personal Care', current_stock: 35, reorder_threshold: 30, sales_velocity: 1.8, unit_price: 140, cost_price: 122, unit: 'packs', supplier: 'Hindustan Unilever West Depot', last_restock_date: '2026-09-15', estimated_stockout_days: 19.4, estimated_stockout_date: 'In 19 days', suggested_reorder_qty: 0, sales_7d: 12, sales_14d: 25, sales_30d: 54, sales_trend_pct: 2.0, lead_time_days: 4, safety_stock: 10, min_order_qty: 12 },
+    { id: 'inv-masala', shop_id: 'shop-01', item_name: 'Everest Royal Garam Masala (100g)', category: 'Spices & Condiments', current_stock: 6, reorder_threshold: 20, sales_velocity: 3.5, unit_price: 98, cost_price: 68, unit: 'packs', supplier: 'Everest Spices Western Agency', last_restock_date: '2026-09-21', estimated_stockout_days: 1.7, estimated_stockout_date: 'In 1.7 days', suggested_reorder_qty: 36, sales_7d: 24, sales_14d: 46, sales_30d: 82, sales_trend_pct: 28.0, lead_time_days: 3, safety_stock: 12, min_order_qty: 12 },
+    { id: 'inv-dead', shop_id: 'shop-01', item_name: 'Imported Penne Rigate Pasta (500g)', category: 'Staples & Grains', current_stock: 48, reorder_threshold: 15, sales_velocity: 0.3, unit_price: 160, cost_price: 145, unit: 'boxes', supplier: 'Euro Gourmet Traders Mumbai', last_restock_date: '2026-08-10', estimated_stockout_days: 160.0, estimated_stockout_date: 'In 160 days', suggested_reorder_qty: 0, sales_7d: 2, sales_14d: 4, sales_30d: 15, sales_trend_pct: -40.0, lead_time_days: 7, safety_stock: 5, min_order_qty: 6 },
+    { id: 'inv-04', shop_id: 'shop-02', item_name: 'Amul Butter (500g)', category: 'Dairy & Fresh', current_stock: 5, reorder_threshold: 15, sales_velocity: 4.1, unit_price: 285, cost_price: 258, unit: 'packs', supplier: 'Amul Mumbai Depot', last_restock_date: '2026-09-20', estimated_stockout_days: 1.2, estimated_stockout_date: 'Tomorrow, 3:00 PM', suggested_reorder_qty: 30, sales_7d: 29, sales_14d: 55, sales_30d: 110, sales_trend_pct: 12.0, lead_time_days: 2, safety_stock: 10, min_order_qty: 15 },
+    { id: 'inv-05', shop_id: 'shop-02', item_name: 'Tata Salt Vacuum Evaporated (1kg)', category: 'Staples & Grains', current_stock: 14, reorder_threshold: 40, sales_velocity: 11.2, unit_price: 28, cost_price: 24, unit: 'packs', supplier: 'Tata Consumer Products West Depot', last_restock_date: '2026-09-19', estimated_stockout_days: 1.25, estimated_stockout_date: 'Tomorrow, 4:00 PM', suggested_reorder_qty: 60, sales_7d: 78, sales_14d: 150, sales_30d: 310, sales_trend_pct: 5.0, lead_time_days: 3, safety_stock: 25, min_order_qty: 30 },
+    { id: 'inv-06', shop_id: 'shop-03', item_name: 'Fortune Kachi Ghani Mustard Oil (1L)', category: 'Edible Oils', current_stock: 3, reorder_threshold: 20, sales_velocity: 5.5, unit_price: 165, cost_price: 145, unit: 'bottles', supplier: 'Adani Wilmar Thane', last_restock_date: '2026-09-17', estimated_stockout_days: 0.5, estimated_stockout_date: 'Today, 6:00 PM (Critical)', suggested_reorder_qty: 35, sales_7d: 38, sales_14d: 72, sales_30d: 140, sales_trend_pct: 35.0, lead_time_days: 3, safety_stock: 15, min_order_qty: 20 },
+    { id: 'inv-07', shop_id: 'shop-12', item_name: 'Nandini GoodLife Milk (500ml)', category: 'Dairy & Fresh', current_stock: 8, reorder_threshold: 30, sales_velocity: 18.0, unit_price: 32, cost_price: 28, unit: 'packs', supplier: 'KMF Nandini Dairy Bengaluru', last_restock_date: '2026-09-24', estimated_stockout_days: 0.44, estimated_stockout_date: 'Today, 4:00 PM (Urgent)', suggested_reorder_qty: 80, sales_7d: 126, sales_14d: 245, sales_30d: 490, sales_trend_pct: 12.0, lead_time_days: 2, safety_stock: 30, min_order_qty: 50 }
   ];
 
   for (const item of INVENTORY_SEED) {
     insertInventory.run(
       item.id, item.shop_id, item.item_name, item.category, item.current_stock, item.reorder_threshold,
       item.sales_velocity, item.unit_price, item.cost_price, item.unit, item.supplier, item.last_restock_date,
-      item.estimated_stockout_days, item.estimated_stockout_date, item.suggested_reorder_qty
+      item.estimated_stockout_days, item.estimated_stockout_date, item.suggested_reorder_qty,
+      item.sales_7d, item.sales_14d, item.sales_30d, item.sales_trend_pct, item.lead_time_days, item.safety_stock, item.min_order_qty
     );
   }
 

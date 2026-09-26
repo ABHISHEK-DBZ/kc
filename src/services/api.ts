@@ -142,6 +142,34 @@ export const api = {
     return request('/api/staff-activities');
   },
 
+  // Smart Reorder & Purchase Intelligence
+  async getInventoryRecommendations(): Promise<any[]> {
+    return request('/api/inventory/recommendations');
+  },
+
+  async getInventoryRecommendation(id: string): Promise<any> {
+    return request(`/api/inventory/recommendations/${id}`);
+  },
+
+  async createPOFromRecommendation(id: string, quantity?: number, reason?: string): Promise<any> {
+    return request(`/api/inventory/recommendations/${id}/create-po`, {
+      method: 'POST',
+      body: JSON.stringify({ quantity, reason })
+    });
+  },
+
+  async dismissInventoryRecommendation(id: string): Promise<any> {
+    return request(`/api/inventory/recommendations/${id}/dismiss`, {
+      method: 'POST'
+    });
+  },
+
+  async recalculateInventoryRecommendations(): Promise<any> {
+    return request('/api/inventory/recommendations/recalculate', {
+      method: 'POST'
+    });
+  },
+
   // Analytics
   async getOverviewAnalytics(): Promise<any> {
     return request('/api/analytics/overview');

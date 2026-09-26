@@ -670,6 +670,9 @@ export function App() {
                   <InventoryView
                     inventoryItems={visibleInventory}
                     shops={visibleShops}
+                    onNavigateToPO={() => navigateToTab('purchase-orders')}
+                    onRefreshPOs={() => api.getPurchaseOrders().then((pos) => pos && setPurchaseOrders(pos))}
+                    userRole={userRole}
                   />
                 )}
 
