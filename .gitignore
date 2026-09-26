@@ -23,12 +23,25 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment variables
-.env
-.env*.local
+# Flutter/Dart
+android/build/
+android/.dart_tool/
+android/.packages
+android/.pub-cache/
+android/.pub/
+android/build/
+android/ios/Flutter/Flutter.framework
+android/ios/Flutter/Flutter.podspec
+android/ios/Pods/
+*.apk
+*.aab
 
-# Database
-data/*.db
-data/*.db-journal
-data/*.db-wal
-data/*.db-shm
+# Environment files
+.env
+
+# Server
+server/node_modules/
+
+# OS files
+Thumbs.db
+*.tmp
